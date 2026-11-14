@@ -154,13 +154,19 @@ static void test_idle_edge_fingertip_allowed(void)
 	CHECK(s.c.state == PR_FINGER, "idle edge fingertip: %s", pr_state_name(s.c.state));
 }
 
-static void test_long_contact_in_edge(void)
+static void test_four_finger_swipe_from_right_edge(void)
 {
 	struct sim s;
 
-	/* Side of the hand: long, not huge. */
-	land(&s, 120, 20, 900, 400, T0, 0);
-	CHECK(s.c.state == PR_PALM && s.c.reason == PR_R_EDGE_SHAPE, "long edge contact: %s/%s",
+	/* From a real log: the fourth finger of a swipe landed at the right
+	 * edge reading 318 x 676 and was taken for a palm, turning a four
+	 * finger swipe into a three finger one. */
+	land(&s, 127.6, 20.2, 318, 676, T0, 0);
+	CHECK(s.c.state == PR_FINGER, "long fingertip at the edge: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, -0.3, 0, 300, 650, MS(7), 0, false);
+	step(&s, -10, 0, 200, 300, MS(200), 0, false);
+	CHECK(s.c.state == PR_FINGER, "and stays a finger as it swipes: %s/%s",
 	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
 }
 
@@ -234,8 +240,8 @@ static void test_minor_bigger_than_major(void)
 	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
 	CHECK(s.c.max_size == 1700, "max size uses the bigger axis: %d", s.c.max_size);
 
-	land(&s, 5, 40, 400, 900, T0, 0);
-	CHECK(s.c.state == PR_PALM && s.c.reason == PR_R_EDGE_SHAPE, "long either way: %s/%s",
+	land(&s, 5, 40, 400, 1100, T0, 0);
+	CHECK(s.c.state == PR_PALM && s.c.reason == PR_R_EDGE_SHAPE, "big minor axis at the edge: %s/%s",
 	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
 }
 
@@ -284,7 +290,7 @@ static void test_config_parse(void)
 	const char *text = "# comment\n"
 			   "enabled = no\n"
 			   "  finger_size=1200  \n"
-			   "max_ratio = 2.5\n"
+			   "max_ratio = 2.5\n"  /* removed setting: an unknown key now */
 			   "typing_ms = banana\n"
 			   "nope = 1\n"
 			   "touchpad_name = Apple MTP multi-touch\n"
@@ -298,10 +304,9 @@ static void test_config_parse(void)
 	problems = pr_config_parse(in, &c, err);
 	fclose(in);
 	fclose(err);
-	CHECK(problems == 3, "problems: %d", problems);
+	CHECK(problems == 4, "problems: %d", problems);
 	CHECK(!c.enabled, "enabled");
 	CHECK(c.finger_size == 1200, "finger_size %d", c.finger_size);
-	CHECK(c.max_ratio == 2.5, "max_ratio");
 	CHECK(c.typing_ms == 500, "bad value keeps default");
 	CHECK(c.side_edge_mm == 12.0, "out of range keeps default");
 	CHECK(!strcmp(c.touchpad_name, "Apple MTP multi-touch"), "name '%s'", c.touchpad_name);
@@ -335,7 +340,7 @@ int main(void)
 	test_typing_edge_touch_held_until_deliberate();
 	test_idle_edge_palm_shape();
 	test_idle_edge_fingertip_allowed();
-	test_long_contact_in_edge();
+	test_four_finger_swipe_from_right_edge();
 	test_resting_edge_contact_becomes_palm_on_key();
 	test_moving_finger_trusted_when_typing();
 	test_center_resting_finger_not_palm_on_key();

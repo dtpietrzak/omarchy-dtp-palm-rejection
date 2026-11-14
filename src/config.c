@@ -22,7 +22,6 @@ static const struct key keys[] = {
 	{ "debug", K_BOOL, F(debug), 0, 1 },
 	{ "palm_size", K_INT, F(palm_size), 1, 100000 },
 	{ "finger_size", K_INT, F(finger_size), 1, 100000 },
-	{ "max_ratio", K_DOUBLE, F(max_ratio), 1.0, 20.0 },
 	{ "typing_ms", K_INT, F(typing_ms), 0, 5000 },
 	{ "tap_guard_ms", K_INT, F(tap_guard_ms), 0, 5000 },
 	{ "settle_ms", K_INT, F(settle_ms), 0, 1000 },

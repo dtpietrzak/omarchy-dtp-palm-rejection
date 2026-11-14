@@ -10,7 +10,6 @@ void pr_config_defaults(struct pr_config *cfg)
 	cfg->debug = false;
 	cfg->palm_size = 1600;
 	cfg->finger_size = 1000;
-	cfg->max_ratio = 1.8;
 	cfg->typing_ms = 500;
 	cfg->tap_guard_ms = 250;
 	cfg->settle_ms = 60;
@@ -51,20 +50,13 @@ double pr_contact_ratio(const struct pr_contact *c)
 	return (double)big / (double)small;
 }
 
-/* Too big, or long like the side of a hand. Tiny contacts have noisy
- * ellipses, so the length test only counts from half a finger up.
- *
- * The length test only applies in the edge zones: on the M2 trackpad a
- * fingertip landing in the middle often reads twice as long as it is wide
- * for its first few milliseconds, and palms can't land in the middle while
- * your hands are on the keyboard anyway. */
-static bool shape_bad(const struct pr_config *cfg, const struct pr_contact *c, bool in_edge)
+/* Bigger than a fingertip gets. Shape is no help on the M2 trackpad: a
+ * fingertip often reads twice as long as it is wide while it lands, at the
+ * edges and in the middle, while palms read anywhere from 1.3 to 2.2. Size
+ * alone split every finger from every palm in the logs. */
+static bool shape_bad(const struct pr_config *cfg, const struct pr_contact *c)
 {
-	int size = pr_contact_size(c);
-
-	if (size > cfg->finger_size)
-		return true;
-	return in_edge && size > cfg->finger_size / 2 && pr_contact_ratio(c) > cfg->max_ratio;
+	return pr_contact_size(c) > cfg->finger_size;
 }
 
 static void set_state(struct pr_contact *c, enum pr_state s, enum pr_reason r)
@@ -116,7 +108,7 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 
 	if (c->fresh)
 		c->edge_at_start = pr_in_edge(cfg, g, c->x, c->y);
-	bad = shape_bad(cfg, c, c->edge_at_start);
+	bad = shape_bad(cfg, c);
 
 	if (pr_contact_size(c) >= cfg->palm_size) {
 		set_state(c, PR_PALM, PR_R_SIZE);

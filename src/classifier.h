@@ -27,7 +27,6 @@ struct pr_config {
 	bool debug;
 	int palm_size;           /* raw ABS_MT_TOUCH_MAJOR, always a palm above */
 	int finger_size;         /* raw ABS_MT_TOUCH_MAJOR, bigger is suspicious */
-	double max_ratio;        /* major / minor, longer is suspicious */
 	int typing_ms;           /* how long after a key press counts as typing */
 	int tap_guard_ms;        /* hold back every new touch this long after a key */
 	int settle_ms;           /* keep checking a new touch's shape this long */

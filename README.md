@@ -11,7 +11,7 @@ This does the same thing on Linux. Your trackpad already reports each contact's 
 A small daemon sits between the trackpad and libinput:
 
 - It takes over the built-in trackpad and copies every event to a virtual trackpad with the same name plus ` (palm rejection)`. Hyprland uses that one.
-- It judges each contact on its own, from its size, how long and narrow it is, where it landed, how far it has moved, and how long ago you last typed.
+- It judges each contact on its own, from its size, where it landed, how far it has moved, and how long ago you last typed.
 - Contacts that look like palms are tagged as palms (`MT_TOOL_PALM`). libinput already ignores tagged contacts, so scrolling, gestures, taps and three-finger drag keep working with the fingers that are left.
 
 The rules:
@@ -19,10 +19,10 @@ The rules:
 | Situation | Result |
 | --- | --- |
 | Very big contact (`palm_size`), any time | Palm until it lifts |
-| Lands while typing and is big, or long in an edge zone | Palm until it lifts |
+| Lands while typing and is bigger than `finger_size` | Palm until it lifts |
 | Lands while typing in an edge zone (left, right or front) | Ignored until typing stops and it moves `edge_release_mm` |
 | Lands within `tap_guard_ms` of a key press, in the middle | Ignored until it moves `center_release_mm`, so it can't tap-click but can move the pointer |
-| Big or long and resting in an edge zone, typing or not | Palm until it lifts |
+| Bigger than `finger_size` and resting in an edge zone, typing or not | Palm until it lifts |
 | Resting in an edge zone, or big, when a key goes down | Palm until it lifts |
 | Has moved more than `rest_mm` | Trusted as a finger |
 | Small fingertip in the middle, not just after a key | Finger |
@@ -112,8 +112,7 @@ omarchy-dtp-palm-rejection config     # print the current settings
 | `enabled` | `yes` | Filter palms, or pass the trackpad through as stock |
 | `debug` | `no` | Log every touch (what `monitor` turns on) |
 | `palm_size` | `1600` | Always a palm above this touch size |
-| `finger_size` | `1000` | Bigger is suspicious while typing or in an edge zone |
-| `max_ratio` | `1.8` | Longer than this (length / width) is suspicious in an edge zone |
+| `finger_size` | `1000` | Bigger is a palm while typing or resting in an edge zone |
 | `typing_ms` | `500` | How long after a key press counts as typing |
 | `tap_guard_ms` | `250` | New touches this soon after a key are held back |
 | `settle_ms` | `60` | Keep checking a new touch's shape while it lands |
