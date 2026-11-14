@@ -239,6 +239,38 @@ static void test_minor_bigger_than_major(void)
 	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
 }
 
+static void test_typing_long_fingertip_in_middle_is_finger(void)
+{
+	struct sim s;
+	uint64_t key = T0 - MS(100);
+
+	/* From a real log: a finger put down right after typing to move the
+	 * pointer read 318 x 612 (ratio 1.9) for its first frames. */
+	land(&s, 66.9, 34.2, 188, 446, T0, key);
+	CHECK(s.c.state == PR_SOFT_PALM && s.c.reason == PR_R_TAP_GUARD, "lands tap-guarded: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, 0.4, 0, 318, 612, MS(8), key, false);
+	CHECK(s.c.state == PR_SOFT_PALM, "long fingertip is not a palm: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, 2.0, 0, 450, 500, MS(16), key, false);
+	CHECK(s.c.state == PR_FINGER, "moves the pointer: %s", pr_state_name(s.c.state));
+}
+
+static void test_typing_palm_growing_at_side(void)
+{
+	struct sim s;
+	uint64_t key = T0 - MS(100);
+
+	/* From a real log: palms land small at the side and pass 1000 within
+	 * 40-300 ms. */
+	land(&s, 1.8, 33.8, 68, 60, T0, key);
+	CHECK(s.c.state == PR_SOFT_PALM && s.c.reason == PR_R_TYPING_EDGE, "lands: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, 0.6, 0, 1030, 718, MS(40), key, false);
+	CHECK(s.c.state == PR_PALM && s.c.reason == PR_R_TYPING_SHAPE, "grows: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+}
+
 static void test_shortcut_window_expired(void)
 {
 	struct sim s;
@@ -311,6 +343,8 @@ int main(void)
 	test_typing_near_keyboard_edge_is_finger();
 	test_typing_front_edge_palm();
 	test_minor_bigger_than_major();
+	test_typing_long_fingertip_in_middle_is_finger();
+	test_typing_palm_growing_at_side();
 	test_shortcut_window_expired();
 	test_config_parse();
 	test_shipped_config_is_valid();

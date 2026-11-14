@@ -19,7 +19,7 @@ The rules:
 | Situation | Result |
 | --- | --- |
 | Very big contact (`palm_size`), any time | Palm until it lifts |
-| Lands while typing and is big or long | Palm until it lifts |
+| Lands while typing and is big, or long in an edge zone | Palm until it lifts |
 | Lands while typing in an edge zone (left, right or front) | Ignored until typing stops and it moves `edge_release_mm` |
 | Lands within `tap_guard_ms` of a key press, in the middle | Ignored until it moves `center_release_mm`, so it can't tap-click but can move the pointer |
 | Big or long and resting in an edge zone, typing or not | Palm until it lifts |
@@ -113,7 +113,7 @@ omarchy-dtp-palm-rejection config     # print the current settings
 | `debug` | `no` | Log every touch (what `monitor` turns on) |
 | `palm_size` | `1600` | Always a palm above this touch size |
 | `finger_size` | `1000` | Bigger is suspicious while typing or in an edge zone |
-| `max_ratio` | `1.8` | Longer than this (length / width) is suspicious |
+| `max_ratio` | `1.8` | Longer than this (length / width) is suspicious in an edge zone |
 | `typing_ms` | `500` | How long after a key press counts as typing |
 | `tap_guard_ms` | `250` | New touches this soon after a key are held back |
 | `settle_ms` | `60` | Keep checking a new touch's shape while it lands |

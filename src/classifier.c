@@ -52,14 +52,19 @@ double pr_contact_ratio(const struct pr_contact *c)
 }
 
 /* Too big, or long like the side of a hand. Tiny contacts have noisy
- * ellipses, so the length test only counts from half a finger up. */
-static bool shape_bad(const struct pr_config *cfg, const struct pr_contact *c)
+ * ellipses, so the length test only counts from half a finger up.
+ *
+ * The length test only applies in the edge zones: on the M2 trackpad a
+ * fingertip landing in the middle often reads twice as long as it is wide
+ * for its first few milliseconds, and palms can't land in the middle while
+ * your hands are on the keyboard anyway. */
+static bool shape_bad(const struct pr_config *cfg, const struct pr_contact *c, bool in_edge)
 {
 	int size = pr_contact_size(c);
 
 	if (size > cfg->finger_size)
 		return true;
-	return size > cfg->finger_size / 2 && pr_contact_ratio(c) > cfg->max_ratio;
+	return in_edge && size > cfg->finger_size / 2 && pr_contact_ratio(c) > cfg->max_ratio;
 }
 
 static void set_state(struct pr_contact *c, enum pr_state s, enum pr_reason r)
@@ -97,7 +102,7 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 	double dy = (c->y - c->y0) / g->res_y;
 	double dist = sqrt(dx * dx + dy * dy);
 	uint64_t age_ms = (now_us - c->t0_us) / 1000;
-	bool bad = shape_bad(cfg, c);
+	bool bad;
 	double ratio = pr_contact_ratio(c);
 
 	if (dist > c->travel_mm)
@@ -108,6 +113,10 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 		c->max_ratio = ratio;
 	if (c->pressure > c->max_pressure)
 		c->max_pressure = c->pressure;
+
+	if (c->fresh)
+		c->edge_at_start = pr_in_edge(cfg, g, c->x, c->y);
+	bad = shape_bad(cfg, c, c->edge_at_start);
 
 	if (pr_contact_size(c) >= cfg->palm_size) {
 		set_state(c, PR_PALM, PR_R_SIZE);
@@ -120,7 +129,6 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 		c->fresh = false;
 		c->typing_at_start = typing_now;
 		c->guard_at_start = since_key < (uint64_t)cfg->tap_guard_ms * 1000;
-		c->edge_at_start = pr_in_edge(cfg, g, c->x, c->y);
 
 		if (c->typing_at_start && bad)
 			set_state(c, PR_PALM, PR_R_TYPING_SHAPE);
