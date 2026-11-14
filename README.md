@@ -82,13 +82,6 @@ omarchy-dtp-palm-rejection status   # on or off, plus the daemon's recent log
 
 Changes take effect right away and last across reboots. A switch waits until no finger is on the trackpad, so no touch gets stuck halfway.
 
-To toggle it from a key, add this to `~/.config/hypr/bindings.lua`. Super+Alt+P is free in a stock Omarchy; check yours with `omarchy menu keybindings --print`.
-
-```lua
-o.bind("SUPER + ALT + P", "Toggle palm rejection",
-  [[omarchy-dtp-palm-rejection toggle && notify-send "$(omarchy-dtp-palm-rejection status | head -n 1)"]])
-```
-
 ## Tune it
 
 The size defaults come from libinput's numbers for Apple trackpads and are a starting point. To see what your own fingers and palms measure:
