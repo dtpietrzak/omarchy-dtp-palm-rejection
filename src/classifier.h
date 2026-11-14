@@ -15,10 +15,10 @@ enum pr_reason {
 	PR_R_NONE,
 	PR_R_SIZE,         /* bigger than palm_size, at any time */
 	PR_R_TYPING_SHAPE, /* landed while typing, too big or too long */
-	PR_R_TYPING_EDGE,  /* landed while typing, in an edge zone */
+	PR_R_TYPING_EDGE,  /* landed wide while typing, in an edge zone */
 	PR_R_TAP_GUARD,    /* landed right after a key press */
 	PR_R_EDGE_SHAPE,   /* in an edge zone, too big or too long, not moving */
-	PR_R_RESTING,      /* resting in an edge zone or big when a key went down */
+	PR_R_RESTING,      /* resting wide in an edge zone, or big, when a key went down */
 	PR_R_RELEASED,     /* was a soft palm, moved like a finger */
 };
 
@@ -27,6 +27,7 @@ struct pr_config {
 	bool debug;
 	int palm_size;           /* raw ABS_MT_TOUCH_MAJOR, always a palm above */
 	int finger_size;         /* raw ABS_MT_TOUCH_MAJOR, bigger is suspicious */
+	int palm_width;          /* raw ABS_MT_WIDTH_MAJOR at landing; 0: unused */
 	int typing_ms;           /* how long after a key press counts as typing */
 	int tap_guard_ms;        /* hold back every new touch this long after a key */
 	int settle_ms;           /* keep checking a new touch's shape this long */
@@ -54,6 +55,7 @@ struct pr_contact {
 	bool typing_at_start;
 	bool guard_at_start;
 	bool edge_at_start;
+	bool wide_at_start; /* landed with a palm-like approach width */
 	double travel_mm;
 	int max_size;
 	double max_ratio;

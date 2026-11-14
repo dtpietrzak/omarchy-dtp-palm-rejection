@@ -10,9 +10,10 @@ void pr_config_defaults(struct pr_config *cfg)
 	cfg->debug = false;
 	cfg->palm_size = 1600;
 	cfg->finger_size = 1000;
+	cfg->palm_width = 2000;
 	cfg->typing_ms = 500;
 	cfg->tap_guard_ms = 250;
-	cfg->settle_ms = 60;
+	cfg->settle_ms = 300;
 	cfg->side_edge_mm = 12.0;
 	cfg->bottom_edge_mm = 10.0;
 	cfg->edge_release_mm = 8.0;
@@ -75,6 +76,7 @@ void pr_contact_begin(struct pr_contact *c, uint64_t now_us)
 	c->typing_at_start = false;
 	c->guard_at_start = false;
 	c->edge_at_start = false;
+	c->wide_at_start = false;
 	c->travel_mm = 0.0;
 	c->max_size = 0;
 	c->max_ratio = 0.0;
@@ -106,8 +108,15 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 	if (c->pressure > c->max_pressure)
 		c->max_pressure = c->pressure;
 
-	if (c->fresh)
+	if (c->fresh) {
 		c->edge_at_start = pr_in_edge(cfg, g, c->x, c->y);
+		/* How big the hand looks as it approaches, on the first frame.
+		 * Fingertips landing at the edge read 1390-1880 on an M2,
+		 * palms 2110 and up. Without a width (0), treat every edge
+		 * touch as possibly a palm. */
+		c->wide_at_start = cfg->palm_width == 0 || c->wmajor == 0 ||
+				   c->wmajor >= cfg->palm_width;
+	}
 	bad = shape_bad(cfg, c);
 
 	if (pr_contact_size(c) >= cfg->palm_size) {
@@ -124,7 +133,7 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 
 		if (c->typing_at_start && bad)
 			set_state(c, PR_PALM, PR_R_TYPING_SHAPE);
-		else if (c->typing_at_start && c->edge_at_start)
+		else if (c->typing_at_start && c->edge_at_start && c->wide_at_start)
 			set_state(c, PR_SOFT_PALM, PR_R_TYPING_EDGE);
 		else if (c->guard_at_start)
 			set_state(c, PR_SOFT_PALM, PR_R_TAP_GUARD);
@@ -133,10 +142,12 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 		return;
 	}
 
-	/* A touch is still landing for the first few frames and grows while
-	 * it does, so check its shape again. */
-	if (age_ms <= (uint64_t)cfg->settle_ms && c->typing_at_start && bad) {
-		set_state(c, PR_PALM, PR_R_TYPING_SHAPE);
+	/* Palms land small and take up to about 300 ms to grow past a
+	 * fingertip, often moving a few mm while they do, so keep checking
+	 * the size of new touches made while typing or at an edge. */
+	if (age_ms <= (uint64_t)cfg->settle_ms && bad &&
+	    (c->typing_at_start || c->edge_at_start)) {
+		set_state(c, PR_PALM, c->typing_at_start ? PR_R_TYPING_SHAPE : PR_R_EDGE_SHAPE);
 		return;
 	}
 
@@ -150,19 +161,23 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 			if (c->travel_mm >= cfg->center_release_mm)
 				set_state(c, PR_FINGER, PR_R_RELEASED);
 		} else if (c->reason == PR_R_TYPING_EDGE) {
-			if (!typing_now && c->travel_mm >= cfg->edge_release_mm)
+			/* Past the landing window, a touch that stayed fingertip
+			 * sized and moved this far is a finger, typing or not. */
+			if (age_ms > (uint64_t)cfg->settle_ms &&
+			    c->travel_mm >= cfg->edge_release_mm)
 				set_state(c, PR_FINGER, PR_R_RELEASED);
 		}
 		break;
 	case PR_FINGER:
 		/* A finger that has moved is trusted from then on. A resting
-		 * one is a palm once it looks like one, or once you type
-		 * with it sitting in an edge zone. */
+		 * one is a palm once it gets too big, or once you type with
+		 * it sitting wide in an edge zone. A narrow one held still at
+		 * the edge, like a finger aiming in a game, stays a finger. */
 		if (c->travel_mm >= cfg->rest_mm)
 			break;
 		if (c->edge_at_start && bad)
 			set_state(c, PR_PALM, PR_R_EDGE_SHAPE);
-		else if (key_this_frame && (c->edge_at_start || bad))
+		else if (key_this_frame && ((c->edge_at_start && c->wide_at_start) || bad))
 			set_state(c, PR_PALM, PR_R_RESTING);
 		break;
 	case PR_PALM:

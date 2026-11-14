@@ -43,6 +43,21 @@ static void land(struct sim *s, double x_mm, double y_mm, int major, int minor, 
 	pr_classify(&cfg, &G, &s->c, t, last_key, false);
 }
 
+/* Like land(), with the approach width the trackpad reports. */
+static void land_w(struct sim *s, double x_mm, double y_mm, int major, int minor, int wmajor,
+		   uint64_t t, uint64_t last_key)
+{
+	memset(&s->c, 0, sizeof(s->c));
+	s->c.x = (int)(x_mm * G.res_x);
+	s->c.y = (int)(y_mm * G.res_y);
+	s->c.major = major;
+	s->c.minor = minor;
+	s->c.wmajor = wmajor;
+	s->t = t;
+	pr_contact_begin(&s->c, t);
+	pr_classify(&cfg, &G, &s->c, t, last_key, false);
+}
+
 static void step(struct sim *s, double dx_mm, double dy_mm, int major, int minor,
 		 uint64_t dt, uint64_t last_key, bool key)
 {
@@ -277,6 +292,80 @@ static void test_typing_palm_growing_at_side(void)
 	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
 }
 
+static void test_gaming_flick_from_edge_while_typing(void)
+{
+	struct sim s;
+	uint64_t key = T0 - MS(100);
+
+	/* From a real log: holding keys in a game and flicking a finger in
+	 * from the left edge. Narrow at landing (1676), so not a palm; the tap
+	 * guard lets it go after 1.5 mm. */
+	land_w(&s, 7.8, 33.6, 202, 404, 1676, T0, key);
+	CHECK(s.c.reason != PR_R_TYPING_EDGE, "narrow edge touch is not an edge palm: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, 2, 0, 300, 450, MS(10), T0, true);
+	CHECK(s.c.state == PR_FINGER, "flick moves the pointer: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, 15, 0, 650, 670, MS(200), T0 + MS(200), true);
+	CHECK(s.c.state == PR_FINGER, "and keeps moving it: %s", pr_state_name(s.c.state));
+}
+
+static void test_gaming_finger_held_still_at_edge(void)
+{
+	struct sim s;
+
+	/* Aiming: a narrow finger resting at the edge while keys go down. */
+	land_w(&s, 125, 30, 500, 600, 1600, T0, 0);
+	CHECK(s.c.state == PR_FINGER, "lands: %s", pr_state_name(s.c.state));
+	step(&s, 0.5, 0, 600, 650, MS(400), T0 + MS(400), true);
+	step(&s, 0.3, 0, 600, 650, MS(100), T0 + MS(500), true);
+	CHECK(s.c.state == PR_FINGER, "narrow resting finger survives key presses: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+}
+
+static void test_wide_edge_touch_while_typing_held(void)
+{
+	struct sim s;
+	uint64_t key = T0 - MS(100);
+
+	/* From a real log: a palm at the left edge, width 2260 at landing. */
+	land_w(&s, 0.4, 28.2, 54, 66, 2260, T0, key);
+	CHECK(s.c.state == PR_SOFT_PALM && s.c.reason == PR_R_TYPING_EDGE, "wide edge touch: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	step(&s, 1.7, 0, 400, 504, MS(160), key, false);
+	CHECK(s.c.state == PR_SOFT_PALM, "small drift stays held: %s", pr_state_name(s.c.state));
+}
+
+static void test_wide_edge_touch_released_while_typing(void)
+{
+	struct sim s;
+	uint64_t key = T0 - MS(100);
+
+	land_w(&s, 3, 30, 60, 60, 2200, T0, key);
+	CHECK(s.c.state == PR_SOFT_PALM, "held: %s", pr_state_name(s.c.state));
+	step(&s, 9, 0, 600, 650, MS(100), T0 + MS(100), true);
+	CHECK(s.c.state == PR_SOFT_PALM, "not inside the landing window: %s", pr_state_name(s.c.state));
+	step(&s, 1, 0, 600, 650, MS(250), T0 + MS(350), true);
+	CHECK(s.c.state == PR_FINGER && s.c.reason == PR_R_RELEASED,
+	      "fingertip-sized and moved 8 mm, released while typing: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+}
+
+static void test_narrow_palm_growing_while_moving(void)
+{
+	struct sim s;
+	uint64_t key = T0 - MS(300);
+
+	/* A palm that slips under palm_width still has to grow past
+	 * finger_size within the landing window, and gets caught. */
+	land_w(&s, 4, 35, 60, 60, 1900, T0, key);
+	step(&s, 3, 0, 400, 400, MS(80), key, false);
+	CHECK(s.c.state == PR_FINGER, "looks like a finger at first: %s", pr_state_name(s.c.state));
+	step(&s, 0.5, 0, 1100, 700, MS(150), key, false);
+	CHECK(s.c.state == PR_PALM, "caught when it grows: %s/%s", pr_state_name(s.c.state),
+	      pr_reason_name(s.c.reason));
+}
+
 static void test_shortcut_window_expired(void)
 {
 	struct sim s;
@@ -350,6 +439,11 @@ int main(void)
 	test_minor_bigger_than_major();
 	test_typing_long_fingertip_in_middle_is_finger();
 	test_typing_palm_growing_at_side();
+	test_gaming_flick_from_edge_while_typing();
+	test_gaming_finger_held_still_at_edge();
+	test_wide_edge_touch_while_typing_held();
+	test_wide_edge_touch_released_while_typing();
+	test_narrow_palm_growing_while_moving();
 	test_shortcut_window_expired();
 	test_config_parse();
 	test_shipped_config_is_valid();

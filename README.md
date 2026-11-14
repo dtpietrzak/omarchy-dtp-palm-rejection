@@ -11,7 +11,7 @@ This does the same thing on Linux. Your trackpad already reports each contact's 
 A small daemon sits between the trackpad and libinput:
 
 - It takes over the built-in trackpad and copies every event to a virtual trackpad with the same name plus ` (palm rejection)`. Hyprland uses that one.
-- It judges each contact on its own, from its size, where it landed, how far it has moved, and how long ago you last typed.
+- It judges each contact on its own, from its size, how big the hand looks as it approaches, where it landed, how far it has moved, and how long ago you last typed.
 - Contacts that look like palms are tagged as palms (`MT_TOOL_PALM`). libinput already ignores tagged contacts, so scrolling, gestures, taps and three-finger drag keep working with the fingers that are left.
 
 The rules:
@@ -20,10 +20,11 @@ The rules:
 | --- | --- |
 | Very big contact (`palm_size`), any time | Palm until it lifts |
 | Lands while typing and is bigger than `finger_size` | Palm until it lifts |
-| Lands while typing in an edge zone (left, right or front) | Ignored until typing stops and it moves `edge_release_mm` |
+| Lands wide (`palm_width`) while typing in an edge zone (left, right or front) | Ignored until it moves `edge_release_mm` while staying fingertip sized |
+| Lands narrow while typing in an edge zone, like a finger coming in from the edge in a game | Finger, as long as it stays fingertip sized while it lands |
 | Lands within `tap_guard_ms` of a key press, in the middle | Ignored until it moves `center_release_mm`, so it can't tap-click but can move the pointer |
 | Bigger than `finger_size` and resting in an edge zone, typing or not | Palm until it lifts |
-| Resting in an edge zone, or big, when a key goes down | Palm until it lifts |
+| Resting wide in an edge zone, or big, when a key goes down | Palm until it lifts |
 | Has moved more than `rest_mm` | Trusted as a finger |
 | Small fingertip in the middle, not just after a key | Finger |
 
@@ -97,7 +98,7 @@ lift slot=0 finger reason=- major=620 minor=560 ratio=1.11 ... start=63.2,41.0mm
 lift slot=1 palm reason=edge-shape major=1180 minor=640 ratio=1.84 ... start=6.1,8.3mm edge=yes typing=yes ...
 ```
 
-Tap with a fingertip, rest your palms the way you do while typing, and compare `max_size` (the bigger of the two axes, `major` and `minor`). Set `finger_size` between the two, and `palm_size` below your smallest full palm:
+Tap with a fingertip, rest your palms the way you do while typing, and compare `max_size` (the bigger of the two axes, `major` and `minor`). Set `finger_size` between the two, and `palm_size` below your smallest full palm. For `palm_width`, compare the first number of `width=` on the `change ... age=0ms` lines of fingers and palms landing at the edges:
 
 ```bash
 omarchy-dtp-palm-rejection set finger_size 1100
@@ -113,12 +114,13 @@ omarchy-dtp-palm-rejection config     # print the current settings
 | `debug` | `no` | Log every touch (what `monitor` turns on) |
 | `palm_size` | `1600` | Always a palm above this touch size |
 | `finger_size` | `1000` | Bigger is a palm while typing or resting in an edge zone |
+| `palm_width` | `2000` | Edge touches narrower than this when they land are fingers, even while typing |
 | `typing_ms` | `500` | How long after a key press counts as typing |
 | `tap_guard_ms` | `250` | New touches this soon after a key are held back |
-| `settle_ms` | `60` | Keep checking a new touch's shape while it lands |
+| `settle_ms` | `300` | Keep checking a new touch's size while it lands and grows |
 | `side_edge_mm` | `12` | Left and right edge zones |
 | `bottom_edge_mm` | `10` | Edge zone along the front, away from the keyboard |
-| `edge_release_mm` | `8` | Travel that frees an edge touch once typing stops |
+| `edge_release_mm` | `8` | Travel that frees a wide edge touch that stayed fingertip sized |
 | `center_release_mm` | `1.5` | Travel that frees a tap-guarded touch |
 | `rest_mm` | `2` | Less travel than this counts as resting |
 | `touchpad_name` | empty | Empty detects the built-in trackpad |
@@ -138,7 +140,7 @@ The trackpad is back to stock as soon as the service stops.
 ## Troubleshooting
 
 - **Nothing changed:** check `omarchy-dtp-palm-rejection status`. In `hyprctl devices`, the trackpad should be listed twice, the second one ending in `(palm rejection)`.
-- **Fingers get ignored:** run `monitor`, check that `reason=` explains it, then raise `finger_size`, or lower `side_edge_mm`, `bottom_edge_mm` or `tap_guard_ms`.
+- **Fingers get ignored:** run `monitor`, check that `reason=` explains it. For `typing-edge`, raise `palm_width`; for `typing-shape` or `edge-shape`, raise `finger_size`. Lowering `side_edge_mm`, `bottom_edge_mm` or `tap_guard_ms` also helps.
 - **The service keeps restarting:** `journalctl -u omarchy-dtp-palm-rejection -n 50`. If it can't find the trackpad, set `touchpad_name` from `omarchy-dtp-palm-rejection devices`.
 - **Turn it all off at once:** `sudo systemctl stop omarchy-dtp-palm-rejection`.
 
