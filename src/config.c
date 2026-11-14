@@ -27,7 +27,7 @@ static const struct key keys[] = {
 	{ "tap_guard_ms", K_INT, F(tap_guard_ms), 0, 5000 },
 	{ "settle_ms", K_INT, F(settle_ms), 0, 1000 },
 	{ "side_edge_mm", K_DOUBLE, F(side_edge_mm), 0, 100 },
-	{ "top_edge_mm", K_DOUBLE, F(top_edge_mm), 0, 100 },
+	{ "bottom_edge_mm", K_DOUBLE, F(bottom_edge_mm), 0, 100 },
 	{ "edge_release_mm", K_DOUBLE, F(edge_release_mm), 0, 200 },
 	{ "center_release_mm", K_DOUBLE, F(center_release_mm), 0, 200 },
 	{ "rest_mm", K_DOUBLE, F(rest_mm), 0, 200 },

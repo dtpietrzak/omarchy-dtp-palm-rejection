@@ -32,7 +32,7 @@ struct pr_config {
 	int tap_guard_ms;        /* hold back every new touch this long after a key */
 	int settle_ms;           /* keep checking a new touch's shape this long */
 	double side_edge_mm;     /* left and right edge zones */
-	double top_edge_mm;      /* edge zone next to the keyboard */
+	double bottom_edge_mm;   /* edge zone along the front, away from the keyboard */
 	double edge_release_mm;  /* travel that releases an edge soft palm */
 	double center_release_mm;/* travel that releases a tap-guard soft palm */
 	double rest_mm;          /* less travel than this counts as resting */

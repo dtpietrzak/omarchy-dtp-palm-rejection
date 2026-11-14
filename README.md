@@ -20,7 +20,7 @@ The rules:
 | --- | --- |
 | Very big contact (`palm_size`), any time | Palm until it lifts |
 | Lands while typing and is big or long | Palm until it lifts |
-| Lands while typing in an edge zone | Ignored until typing stops and it moves `edge_release_mm` |
+| Lands while typing in an edge zone (left, right or front) | Ignored until typing stops and it moves `edge_release_mm` |
 | Lands within `tap_guard_ms` of a key press, in the middle | Ignored until it moves `center_release_mm`, so it can't tap-click but can move the pointer |
 | Big or long and resting in an edge zone, typing or not | Palm until it lifts |
 | Resting in an edge zone, or big, when a key goes down | Palm until it lifts |
@@ -118,7 +118,7 @@ omarchy-dtp-palm-rejection config     # print the current settings
 | `tap_guard_ms` | `250` | New touches this soon after a key are held back |
 | `settle_ms` | `60` | Keep checking a new touch's shape while it lands |
 | `side_edge_mm` | `12` | Left and right edge zones |
-| `top_edge_mm` | `10` | Edge zone next to the keyboard |
+| `bottom_edge_mm` | `10` | Edge zone along the front, away from the keyboard |
 | `edge_release_mm` | `8` | Travel that frees an edge touch once typing stops |
 | `center_release_mm` | `1.5` | Travel that frees a tap-guarded touch |
 | `rest_mm` | `2` | Less travel than this counts as resting |
@@ -139,7 +139,7 @@ The trackpad is back to stock as soon as the service stops.
 ## Troubleshooting
 
 - **Nothing changed:** check `omarchy-dtp-palm-rejection status`. In `hyprctl devices`, the trackpad should be listed twice, the second one ending in `(palm rejection)`.
-- **Fingers get ignored:** run `monitor`, check that `reason=` explains it, then raise `finger_size`, or lower `side_edge_mm`, `top_edge_mm` or `tap_guard_ms`.
+- **Fingers get ignored:** run `monitor`, check that `reason=` explains it, then raise `finger_size`, or lower `side_edge_mm`, `bottom_edge_mm` or `tap_guard_ms`.
 - **The service keeps restarting:** `journalctl -u omarchy-dtp-palm-rejection -n 50`. If it can't find the trackpad, set `touchpad_name` from `omarchy-dtp-palm-rejection devices`.
 - **Turn it all off at once:** `sudo systemctl stop omarchy-dtp-palm-rejection`.
 

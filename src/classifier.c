@@ -15,7 +15,7 @@ void pr_config_defaults(struct pr_config *cfg)
 	cfg->tap_guard_ms = 250;
 	cfg->settle_ms = 60;
 	cfg->side_edge_mm = 12.0;
-	cfg->top_edge_mm = 10.0;
+	cfg->bottom_edge_mm = 10.0;
 	cfg->edge_release_mm = 8.0;
 	cfg->center_release_mm = 1.5;
 	cfg->rest_mm = 2.0;
@@ -25,10 +25,13 @@ bool pr_in_edge(const struct pr_config *cfg, const struct pr_geom *g, int x, int
 {
 	double left = (x - g->min_x) / g->res_x;
 	double right = (g->max_x - x) / g->res_x;
-	double top = (y - g->min_y) / g->res_y;
+	/* evdev Y grows toward you, so max_y is the front edge. Palms rest
+	 * on the sides and the front while typing; the keyboard edge is
+	 * left alone because fingers reach up there to point. */
+	double bottom = (g->max_y - y) / g->res_y;
 
 	return left < cfg->side_edge_mm || right < cfg->side_edge_mm ||
-	       top < cfg->top_edge_mm;
+	       bottom < cfg->bottom_edge_mm;
 }
 
 static double ratio_of(const struct pr_contact *c)

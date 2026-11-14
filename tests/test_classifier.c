@@ -18,7 +18,7 @@ static int failures;
 		}                                                          \
 	} while (0)
 
-/* A 128 x 78 mm pad, 10 units per mm, origin top-left. */
+/* A 128 x 78 mm pad, 10 units per mm, origin top-left, Y grows toward you. */
 static const struct pr_geom G = { 0, 1280, 0, 780, 10.0, 10.0 };
 static struct pr_config cfg;
 
@@ -194,6 +194,34 @@ static void test_center_resting_finger_not_palm_on_key(void)
 	CHECK(s.c.state == PR_FINGER, "centre resting fingertip: %s", pr_state_name(s.c.state));
 }
 
+static void test_edge_zones_are_sides_and_front(void)
+{
+	/* Pad is 128 x 78 mm; Y grows toward you. */
+	CHECK(pr_in_edge(&cfg, &G, 50, 400), "left side is an edge");
+	CHECK(pr_in_edge(&cfg, &G, 1230, 400), "right side is an edge");
+	CHECK(pr_in_edge(&cfg, &G, 640, 740), "front edge is an edge");
+	CHECK(!pr_in_edge(&cfg, &G, 640, 30), "keyboard edge is not an edge");
+	CHECK(!pr_in_edge(&cfg, &G, 640, 400), "middle is not an edge");
+}
+
+static void test_typing_near_keyboard_edge_is_finger(void)
+{
+	struct sim s;
+
+	/* Reaching up to point right after typing, past the tap guard. */
+	land(&s, 64, 3, 500, 450, T0, T0 - MS(300));
+	CHECK(s.c.state == PR_FINGER, "fingertip at the keyboard edge: %s", pr_state_name(s.c.state));
+}
+
+static void test_typing_front_edge_palm(void)
+{
+	struct sim s;
+
+	land(&s, 64, 75, 500, 450, T0, T0 - MS(300));
+	CHECK(s.c.state == PR_SOFT_PALM && s.c.reason == PR_R_TYPING_EDGE, "front edge while typing: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+}
+
 static void test_shortcut_window_expired(void)
 {
 	struct sim s;
@@ -262,6 +290,9 @@ int main(void)
 	test_resting_edge_contact_becomes_palm_on_key();
 	test_moving_finger_trusted_when_typing();
 	test_center_resting_finger_not_palm_on_key();
+	test_edge_zones_are_sides_and_front();
+	test_typing_near_keyboard_edge_is_finger();
+	test_typing_front_edge_palm();
 	test_shortcut_window_expired();
 	test_config_parse();
 	test_shipped_config_is_valid();
