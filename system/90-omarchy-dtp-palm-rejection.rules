@@ -1,0 +1,8 @@
+# The virtual trackpad made by omarchy-dtp-palm-rejectiond has no bus for
+# udev to tell that it is built in. Mark it internal like the real one, so
+# libinput treats it the same way.
+ACTION!="add|change", GOTO="omarchy_dtp_palm_end"
+SUBSYSTEM!="input", GOTO="omarchy_dtp_palm_end"
+KERNEL!="event*", GOTO="omarchy_dtp_palm_end"
+ATTRS{name}=="* (palm rejection)", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="internal", ENV{ID_INTEGRATION}="internal"
+LABEL="omarchy_dtp_palm_end"

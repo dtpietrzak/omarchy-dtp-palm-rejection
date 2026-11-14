@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Turn palm rejection on or off, tune it, and watch what it decides.
+# Changes go into the settings file, which the daemon reloads on save.
+
+set -euo pipefail
+
+CONF="${OMARCHY_DTP_PALM_CONF:-/etc/omarchy-dtp-palm-rejection/palm-rejection.conf}"
+DAEMON="${OMARCHY_DTP_PALM_DAEMON:-/usr/local/bin/omarchy-dtp-palm-rejectiond}"
+SERVICE=omarchy-dtp-palm-rejection.service
+
+usage() {
+  cat <<EOF
+Usage: omarchy-dtp-palm-rejection <command>
+
+  on                 Turn palm rejection on
+  off                Turn it off; the trackpad behaves as stock
+  toggle             Switch between on and off
+  status             Show whether it is on and the daemon's recent log
+  monitor            Show each touch's size and decision live (Ctrl-C stops)
+  set <key> <value>  Change a setting, e.g. set finger_size 1100
+  config             Print the current settings
+  devices            List input devices (asks for sudo)
+
+Settings: $CONF
+EOF
+}
+
+fail() {
+  echo "omarchy-dtp-palm-rejection: $*" >&2
+  exit 1
+}
+
+need_conf() {
+  [[ -f $CONF ]] || fail "$CONF is missing; run install.sh first"
+}
+
+get_value() {
+  sed -n -E "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*(.*[^[:space:]])?[[:space:]]*$/\1/p" "$CONF" | tail -n 1
+}
+
+set_value() {
+  local key=$1 value=$2 tmp
+  need_conf
+  [[ -w $CONF ]] || fail "cannot write $CONF; add yourself to the wheel group or use sudo"
+  [[ $key =~ ^[a-z_]+$ ]] || fail "bad setting name: $key"
+  [[ $value != *$'\n'* ]] || fail "value must be one line"
+
+  tmp=$(mktemp)
+  if grep -q -E "^[[:space:]]*$key[[:space:]]*=" "$CONF"; then
+    KEY=$key VALUE=$value awk '
+      BEGIN { key = ENVIRON["KEY"]; value = ENVIRON["VALUE"] }
+      $0 ~ "^[[:space:]]*" key "[[:space:]]*=" { print key " = " value; next }
+      { print }
+    ' "$CONF" >"$tmp"
+  else
+    cat "$CONF" >"$tmp"
+    printf '%s = %s\n' "$key" "$value" >>"$tmp"
+  fi
+
+  if [[ -x $DAEMON ]] && ! "$DAEMON" --check-config "$tmp" >&2; then
+    rm -f "$tmp"
+    fail "not saved: $key = $value"
+  fi
+  # Write in place so the file keeps its owner and mode.
+  cat "$tmp" >"$CONF"
+  rm -f "$tmp"
+}
+
+service_running() {
+  systemctl is-active --quiet "$SERVICE" 2>/dev/null
+}
+
+warn_if_stopped() {
+  if ! service_running; then
+    echo "The daemon is not running, so this takes effect once it starts:" >&2
+    echo "  sudo systemctl enable --now $SERVICE" >&2
+  fi
+}
+
+cmd=${1:-}
+case $cmd in
+  on | off)
+    [[ $# -eq 1 ]] || fail "$cmd takes no arguments"
+    set_value enabled "$([[ $cmd == on ]] && echo yes || echo no)"
+    echo "Palm rejection $cmd."
+    warn_if_stopped
+    ;;
+  toggle)
+    need_conf
+    if [[ $(get_value enabled) == no ]]; then exec "$0" on; else exec "$0" off; fi
+    ;;
+  status)
+    need_conf
+    if [[ $(get_value enabled) == no ]]; then echo "Palm rejection: off"; else echo "Palm rejection: on"; fi
+    if service_running; then echo "Daemon: running"; else echo "Daemon: not running"; fi
+    echo
+    journalctl -u "$SERVICE" -n 8 -o cat --no-pager 2>/dev/null || true
+    ;;
+  monitor)
+    need_conf
+    service_running || fail "the daemon is not running (sudo systemctl start $SERVICE)"
+    old_debug=$(get_value debug)
+    set_value debug yes
+    trap 'set_value debug "${old_debug:-no}"; echo' EXIT
+    trap 'exit 0' INT TERM
+    echo "Touch the trackpad. Each touch prints when its decision changes and when it lifts."
+    echo "major is the touch size to compare with finger_size ($(get_value finger_size)) and palm_size ($(get_value palm_size))."
+    echo
+    journalctl -u "$SERVICE" -f -n 0 -o cat
+    ;;
+  set)
+    [[ $# -eq 3 ]] || fail "usage: set <key> <value>"
+    set_value "$2" "$3"
+    echo "$2 = $3"
+    ;;
+  config)
+    need_conf
+    grep -v -E '^[[:space:]]*(#|$)' "$CONF"
+    ;;
+  devices)
+    sudo "$DAEMON" --list
+    ;;
+  -h | --help | help)
+    usage
+    ;;
+  "")
+    usage
+    exit 1
+    ;;
+  *)
+    fail "unknown command: $cmd (see --help)"
+    ;;
+esac
