@@ -635,11 +635,13 @@ int main(int argc, char **argv)
 	sigprocmask(SIG_BLOCK, &mask, NULL);
 	sfd = signalfd(-1, &mask, SFD_CLOEXEC | SFD_NONBLOCK);
 
-	snprintf(conf_dir, sizeof(conf_dir), "%s", S.conf_path);
-	snprintf(conf_dir, sizeof(conf_dir), "%s", dirname(conf_dir));
 	{
+		/* dirname() and basename() may modify their argument and
+		 * return a pointer into it, so each gets its own copy. */
 		char tmp[PATH_MAX];
 
+		snprintf(tmp, sizeof(tmp), "%s", S.conf_path);
+		snprintf(conf_dir, sizeof(conf_dir), "%s", dirname(tmp));
 		snprintf(tmp, sizeof(tmp), "%s", S.conf_path);
 		snprintf(conf_base, sizeof(conf_base), "%s", basename(tmp));
 	}
