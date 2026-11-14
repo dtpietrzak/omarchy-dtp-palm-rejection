@@ -34,20 +34,32 @@ bool pr_in_edge(const struct pr_config *cfg, const struct pr_geom *g, int x, int
 	       bottom < cfg->bottom_edge_mm;
 }
 
-static double ratio_of(const struct pr_contact *c)
+/* The Apple driver sometimes reports minor > major, especially while a
+ * finger lifts, so use whichever axis is bigger. */
+int pr_contact_size(const struct pr_contact *c)
 {
-	if (c->minor <= 0)
+	return c->major > c->minor ? c->major : c->minor;
+}
+
+double pr_contact_ratio(const struct pr_contact *c)
+{
+	int big = pr_contact_size(c);
+	int small = c->major > c->minor ? c->minor : c->major;
+
+	if (small <= 0)
 		return 1.0;
-	return (double)c->major / (double)c->minor;
+	return (double)big / (double)small;
 }
 
 /* Too big, or long like the side of a hand. Tiny contacts have noisy
  * ellipses, so the length test only counts from half a finger up. */
 static bool shape_bad(const struct pr_config *cfg, const struct pr_contact *c)
 {
-	if (c->major > cfg->finger_size)
+	int size = pr_contact_size(c);
+
+	if (size > cfg->finger_size)
 		return true;
-	return c->major > cfg->finger_size / 2 && ratio_of(c) > cfg->max_ratio;
+	return size > cfg->finger_size / 2 && pr_contact_ratio(c) > cfg->max_ratio;
 }
 
 static void set_state(struct pr_contact *c, enum pr_state s, enum pr_reason r)
@@ -67,7 +79,7 @@ void pr_contact_begin(struct pr_contact *c, uint64_t now_us)
 	c->guard_at_start = false;
 	c->edge_at_start = false;
 	c->travel_mm = 0.0;
-	c->max_major = 0;
+	c->max_size = 0;
 	c->max_ratio = 0.0;
 	c->max_pressure = 0;
 	c->state = PR_FINGER;
@@ -86,18 +98,18 @@ void pr_classify(const struct pr_config *cfg, const struct pr_geom *g,
 	double dist = sqrt(dx * dx + dy * dy);
 	uint64_t age_ms = (now_us - c->t0_us) / 1000;
 	bool bad = shape_bad(cfg, c);
-	double ratio = ratio_of(c);
+	double ratio = pr_contact_ratio(c);
 
 	if (dist > c->travel_mm)
 		c->travel_mm = dist;
-	if (c->major > c->max_major)
-		c->max_major = c->major;
+	if (pr_contact_size(c) > c->max_size)
+		c->max_size = pr_contact_size(c);
 	if (ratio > c->max_ratio)
 		c->max_ratio = ratio;
 	if (c->pressure > c->max_pressure)
 		c->max_pressure = c->pressure;
 
-	if (c->major >= cfg->palm_size) {
+	if (pr_contact_size(c) >= cfg->palm_size) {
 		set_state(c, PR_PALM, PR_R_SIZE);
 		return;
 	}

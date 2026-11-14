@@ -222,6 +222,23 @@ static void test_typing_front_edge_palm(void)
 	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
 }
 
+static void test_minor_bigger_than_major(void)
+{
+	struct sim s;
+
+	/* Seen on the M2 trackpad: minor reported bigger than major. */
+	land(&s, 64, 40, 70, 94, T0, 0);
+	CHECK(s.c.state == PR_FINGER, "small swapped axes: %s", pr_state_name(s.c.state));
+	step(&s, 0, 0, 600, 1700, MS(8), 0, false);
+	CHECK(s.c.state == PR_PALM && s.c.reason == PR_R_SIZE, "big minor axis is a palm: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+	CHECK(s.c.max_size == 1700, "max size uses the bigger axis: %d", s.c.max_size);
+
+	land(&s, 5, 40, 400, 900, T0, 0);
+	CHECK(s.c.state == PR_PALM && s.c.reason == PR_R_EDGE_SHAPE, "long either way: %s/%s",
+	      pr_state_name(s.c.state), pr_reason_name(s.c.reason));
+}
+
 static void test_shortcut_window_expired(void)
 {
 	struct sim s;
@@ -293,6 +310,7 @@ int main(void)
 	test_edge_zones_are_sides_and_front();
 	test_typing_near_keyboard_edge_is_finger();
 	test_typing_front_edge_palm();
+	test_minor_bigger_than_major();
 	test_shortcut_window_expired();
 	test_config_parse();
 	test_shipped_config_is_valid();

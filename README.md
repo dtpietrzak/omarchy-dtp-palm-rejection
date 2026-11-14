@@ -93,11 +93,11 @@ omarchy-dtp-palm-rejection monitor
 Each touch prints a line when its decision changes and when it lifts:
 
 ```
-lift slot=0 finger reason=- major=620 minor=560 ratio=1.11 ... start=63.2,41.0mm edge=no typing=no travel=14.2mm max_major=640
+lift slot=0 finger reason=- major=620 minor=560 ratio=1.11 ... start=63.2,41.0mm edge=no typing=no travel=14.2mm max_size=640
 lift slot=1 palm reason=edge-shape major=1180 minor=640 ratio=1.84 ... start=6.1,8.3mm edge=yes typing=yes ...
 ```
 
-Tap with a fingertip, rest your palms the way you do while typing, and compare `max_major`. Set `finger_size` between the two, and `palm_size` below your smallest full palm:
+Tap with a fingertip, rest your palms the way you do while typing, and compare `max_size` (the bigger of the two axes, `major` and `minor`). Set `finger_size` between the two, and `palm_size` below your smallest full palm:
 
 ```bash
 omarchy-dtp-palm-rejection set finger_size 1100

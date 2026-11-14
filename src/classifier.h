@@ -56,7 +56,7 @@ struct pr_contact {
 	bool guard_at_start;
 	bool edge_at_start;
 	double travel_mm;
-	int max_major;
+	int max_size;
 	double max_ratio;
 	int max_pressure;
 	enum pr_state state;
@@ -74,6 +74,10 @@ void pr_contact_begin(struct pr_contact *c, uint64_t now_us);
 void pr_classify(const struct pr_config *cfg, const struct pr_geom *geom,
 		 struct pr_contact *c, uint64_t now_us, uint64_t last_key_us,
 		 bool key_this_frame);
+
+/* Touch size: the bigger ellipse axis. Ratio: bigger over smaller, >= 1. */
+int pr_contact_size(const struct pr_contact *c);
+double pr_contact_ratio(const struct pr_contact *c);
 
 bool pr_in_edge(const struct pr_config *cfg, const struct pr_geom *geom, int x, int y);
 

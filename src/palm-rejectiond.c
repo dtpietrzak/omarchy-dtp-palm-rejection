@@ -317,14 +317,14 @@ static void log_contact(int s, const char *what)
 		return;
 	printf("%s slot=%d %s reason=%s major=%d minor=%d ratio=%.2f width=%d/%d "
 	       "pressure=%d at=%.1f,%.1fmm start=%.1f,%.1fmm edge=%s typing=%s "
-	       "travel=%.1fmm age=%llums max_major=%d\n",
+	       "travel=%.1fmm age=%llums max_size=%d\n",
 	       what, s, pr_state_name(c->state), pr_reason_name(c->reason), c->major,
-	       c->minor, c->minor > 0 ? (double)c->major / c->minor : 0.0, c->wmajor,
+	       c->minor, pr_contact_ratio(c), c->wmajor,
 	       c->wminor, c->pressure, (c->x - S.geom.min_x) / S.geom.res_x,
 	       (c->y - S.geom.min_y) / S.geom.res_y, (c->x0 - S.geom.min_x) / S.geom.res_x,
 	       (c->y0 - S.geom.min_y) / S.geom.res_y, c->edge_at_start ? "yes" : "no",
 	       c->typing_at_start ? "yes" : "no", c->travel_mm,
-	       (unsigned long long)((now_us() - c->t0_us) / 1000), c->max_major);
+	       (unsigned long long)((now_us() - c->t0_us) / 1000), c->max_size);
 	fflush(stdout);
 }
 

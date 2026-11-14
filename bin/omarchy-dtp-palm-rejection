@@ -104,7 +104,7 @@ case $cmd in
     trap 'set_value debug "${old_debug:-no}"; echo' EXIT
     trap 'exit 0' INT TERM
     echo "Touch the trackpad. Each touch prints when its decision changes and when it lifts."
-    echo "major is the touch size to compare with finger_size ($(get_value finger_size)) and palm_size ($(get_value palm_size))."
+    echo "max_size is the touch size to compare with finger_size ($(get_value finger_size)) and palm_size ($(get_value palm_size))."
     echo
     journalctl -u "$SERVICE" -f -n 0 -o cat
     ;;
