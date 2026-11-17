@@ -28,10 +28,15 @@ fi
 [[ $# -eq 0 ]] || fail "unknown argument: $1"
 [[ $EUID -ne 0 ]] || fail "run as your user; it asks for sudo when it needs it"
 
+missing=()
 for tool in cc make pkg-config; do
-  command -v "$tool" >/dev/null || fail "$tool is missing: sudo pacman -S --needed base-devel"
+  command -v "$tool" >/dev/null || { missing+=(base-devel); break; }
 done
-pkg-config --exists libevdev || fail "libevdev is missing: sudo pacman -S --needed libevdev"
+command -v pkg-config >/dev/null && pkg-config --exists libevdev || missing+=(libevdev)
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo "Installing ${missing[*]} to build the daemon..."
+  omarchy-pkg-add "${missing[@]}" || fail "could not install ${missing[*]}: sudo pacman -S --needed ${missing[*]}"
+fi
 
 echo "Building..."
 make -C "$ROOT" --no-print-directory

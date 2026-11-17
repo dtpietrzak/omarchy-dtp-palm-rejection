@@ -35,7 +35,7 @@ If the daemon stops or crashes, the kernel gives the real trackpad back and it w
 ## Requirements
 
 - Omarchy on an Apple Silicon MacBook. It was built on a MacBook Pro 13" M2 (`Apple MTP multi-touch`). Any trackpad that reports touch size (`ABS_MT_TOUCH_MAJOR`) should work, but the defaults are tuned for Apple ones.
-- `base-devel` and `libevdev` to build it (`sudo pacman -S --needed base-devel libevdev`).
+- `base-devel` and `libevdev` to build it. `install.sh` installs them if they are missing.
 - Your user in the `wheel` group, which Omarchy sets up, to turn it on and off without sudo.
 
 ## Install
